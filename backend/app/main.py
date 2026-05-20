@@ -1,9 +1,13 @@
 from fastapi import FastAPI
+from app.core.config import settings
 
+# Initialize FastAPI application with settings from configuration
+# These values come from environment variables or .env file
 app = FastAPI(
-    title="DocuQuery API",
+    title=settings.APP_NAME,
     description="RAG Document Intelligence Platform",
-    version="1.0.0"
+    version=settings.APP_VERSION,
+    debug=settings.DEBUG
 )
 
 @app.get("/")
