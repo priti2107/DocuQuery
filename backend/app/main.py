@@ -1,19 +1,41 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from app.core.config import settings
 
-# Initialize FastAPI application with settings from configuration
-# These values come from environment variables or .env file
+from app.core.config import settings
+from app.db.database import connect_to_mongo, close_mongo_connection
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    await connect_to_mongo()
+
+    yield
+
+    # Shutdown
+    await close_mongo_connection()
+
+
 app = FastAPI(
     title=settings.APP_NAME,
-    description="RAG Document Intelligence Platform",
     version=settings.APP_VERSION,
-    debug=settings.DEBUG
+    debug=settings.DEBUG,
+    description="RAG Document Intelligence Platform",
+    lifespan=lifespan
 )
+
 
 @app.get("/")
 def root():
-    return {"message": "Welcome to DocuQuery API"}
+    return {
+        "message": f"Welcome to {settings.APP_NAME}",
+        "version": settings.APP_VERSION
+    }
+
 
 @app.get("/health")
-def health_check():
-    return {"status": "healthy"}
+async def health_check():
+    return {
+        "status": "healthy",
+        "database": "connected"
+    }
