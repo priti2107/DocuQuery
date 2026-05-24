@@ -32,7 +32,7 @@ from fastapi import FastAPI
 
 from app.core.config import settings
 from app.db.database import connect_to_mongo, close_mongo_connection
-from app.api import auth
+from app.api import auth, documents
 
 
 @asynccontextmanager
@@ -100,6 +100,11 @@ app = FastAPI(
 # All routes in auth.router will be prefixed with /auth
 # Example: GET /auth/me, POST /auth/login, POST /auth/register
 app.include_router(auth.router)
+
+# Include documents router
+# All routes in documents.router will be prefixed with /documents
+# Example: POST /documents/upload, GET /documents, DELETE /documents/{id}
+app.include_router(documents.router)
 
 
 # ============================================================================
