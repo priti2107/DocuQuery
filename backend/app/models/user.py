@@ -27,9 +27,10 @@ MongoDB User Document Example:
 """
 
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
-from pydantic import BaseModel, EmailStr, Field
+from bson import ObjectId
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 class User(BaseModel):
@@ -90,6 +91,27 @@ class User(BaseModel):
     # Timestamps
     created_at: datetime = Field(default_factory=datetime.utcnow, description="Account creation time")
     updated_at: datetime = Field(default_factory=datetime.utcnow, description="Last update time")
+    
+    @field_validator("id", mode="before")
+    @classmethod
+    def convert_object_id_to_string(cls, v: Any) -> str | None:
+        """
+        Pydantic v2 field validator for 'id' field.
+        
+        Converts MongoDB ObjectId to string automatically.
+        This handles both cases:
+        - User({"id": ObjectId(...)}) from app code
+        - User({"_id": ObjectId(...)}) from MongoDB (via alias)
+        
+        Args:
+            v: Value to validate (ObjectId, string, or None)
+            
+        Returns:
+            String representation of ObjectId or the original value
+        """
+        if isinstance(v, ObjectId):
+            return str(v)
+        return v
     
     class Config:
         """Pydantic configuration for User model."""
