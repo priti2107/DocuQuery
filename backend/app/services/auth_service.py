@@ -242,6 +242,10 @@ class AuthService:
         if not user_doc:
             return None
         
+        # Convert MongoDB _id to id for Pydantic User model
+        if "_id" in user_doc:
+            user_doc["id"] = str(user_doc.pop("_id"))
+        
         return User(**user_doc)
     
     @staticmethod
