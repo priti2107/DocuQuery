@@ -194,6 +194,7 @@ class AuthService:
             return None
         
         # Convert MongoDB document to User object
+        # Field validator in User model handles ObjectId → string conversion
         user = User(**user_doc)
         
         # Verify password
@@ -242,6 +243,8 @@ class AuthService:
         if not user_doc:
             return None
         
+        # Field validator in User model handles ObjectId → string conversion
+        # No need for manual conversion here
         return User(**user_doc)
     
     @staticmethod
