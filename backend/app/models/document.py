@@ -19,9 +19,10 @@ Why separate metadata from files?
 """
 
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from bson import ObjectId
+from pydantic import BaseModel, Field, field_validator
 
 
 class Document(BaseModel):
@@ -77,6 +78,27 @@ class Document(BaseModel):
     
     # Processing
     status: str = Field(default="uploaded", description="Status: uploaded, processing, indexed, error")
+    @field_validator("id", mode="before")
+    @classmethod
+    def convert_object_id_to_string(cls, v: Any) -> str | None:
+        """
+        Pydantic v2 field validator for 'id' field.
+        
+        Converts MongoDB ObjectId to string automatically.
+        Handles both:
+        - User passing ObjectId via "id" field
+        - MongoDB passing ObjectId via "_id" alias
+        
+        Args:
+            v: Value to validate (ObjectId, string, or None)
+            
+        Returns:
+            String representation of ObjectId or the original value
+        """
+        if isinstance(v, ObjectId):
+            return str(v)
+        return v
+    
     
     class Config:
         """Pydantic configuration for Document model."""
