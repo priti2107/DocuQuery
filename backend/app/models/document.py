@@ -78,6 +78,13 @@ class Document(BaseModel):
     
     # Processing
     status: str = Field(default="uploaded", description="Status: uploaded, processing, indexed, error")
+    
+    # Text extraction
+    extracted_text: Optional[str] = Field(default=None, description="Extracted text content from document")
+    text_length: Optional[int] = Field(default=None, description="Character count of extracted text")
+    extraction_status: str = Field(default="pending", description="Extraction status: pending, extracted, failed")
+    extraction_error: Optional[str] = Field(default=None, description="Error message if extraction failed")
+    extraction_date: Optional[datetime] = Field(default=None, description="When text extraction completed")
     @field_validator("id", mode="before")
     @classmethod
     def convert_object_id_to_string(cls, v: Any) -> str | None:
@@ -114,6 +121,11 @@ class Document(BaseModel):
                 "upload_date": "2024-05-24T10:30:00Z",
                 "status": "uploaded",
                 "file_path": "uploads/507f1f77bcf86cd799439011/research_paper.pdf",
-                "storage_key": "507f1f77bcf86cd799439011_research_paper"
+                "storage_key": "507f1f77bcf86cd799439011_research_paper",
+                "extracted_text": "Introduction: This paper explores...",
+                "text_length": 15234,
+                "extraction_status": "extracted",
+                "extraction_error": None,
+                "extraction_date": "2024-05-24T10:30:15Z"
             }
         }

@@ -27,6 +27,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.db.database import get_database
 from app.models.document import Document
+from app.services.extraction_service import extraction_service
 
 
 # ============================================================================
@@ -225,6 +226,7 @@ class DocumentService:
             storage_key=storage_key,
             upload_date=datetime.utcnow(),
             status="uploaded",
+            extraction_status="pending",
         )
         
         # Store metadata in MongoDB
@@ -235,6 +237,50 @@ class DocumentService:
         
         # Set the MongoDB-generated _id
         document.id = str(result.inserted_id)
+        
+        # Extract text from document asynchronously
+        # This happens in the background without blocking the response
+        try:
+            extracted_text, text_length = await extraction_service.extract_text(
+                file_content=file_content,
+                file_type=content_type
+            )
+            
+            # Update document with extraction results
+            document.extracted_text = extracted_text
+            document.text_length = text_length
+            document.extraction_status = "extracted"
+            document.extraction_date = datetime.utcnow()
+            
+            # Update MongoDB document with extracted text
+            await documents_collection.update_one(
+                {"_id": document.id},
+                {
+                    "$set": {
+                        "extracted_text": extracted_text,
+                        "text_length": text_length,
+                        "extraction_status": "extracted",
+                        "extraction_date": datetime.utcnow(),
+                    }
+                }
+            )
+        
+        except Exception as e:
+            # If extraction fails, log error but don't fail the upload
+            error_msg = f"Text extraction failed: {str(e)}"
+            document.extraction_status = "failed"
+            document.extraction_error = error_msg
+            
+            # Update MongoDB with error status
+            await documents_collection.update_one(
+                {"_id": document.id},
+                {
+                    "$set": {
+                        "extraction_status": "failed",
+                        "extraction_error": error_msg,
+                    }
+                }
+            )
         
         return document
     
