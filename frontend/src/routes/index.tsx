@@ -37,12 +37,17 @@ function Landing() {
             <Link to="/careers" className="hover:text-foreground">Careers</Link>
             <Link to="/admin" className="hover:text-foreground">Admin</Link>
           </nav>
-          <div className="ml-auto flex items-center gap-3">
+          <div className="ml-auto flex items-center gap-4">
             <div className="relative hidden md:block">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input placeholder="Quick Search..." className="h-9 w-56 rounded-full bg-muted/50 pl-9" />
             </div>
-            <Button className="rounded-full px-5">Sign up</Button>
+            <Link to="/login" className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors">
+              Log in
+            </Link>
+            <Button asChild className="rounded-full px-5 bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer">
+              <Link to="/signup">Sign up</Link>
+            </Button>
           </div>
         </div>
       </header>
@@ -157,8 +162,8 @@ function Landing() {
             <h2 className="font-serif text-3xl font-semibold md:text-4xl">Ready to master your documents?</h2>
             <p className="mx-auto mt-3 max-w-xl text-sm text-primary-foreground/80">Join 50,000+ students and professionals who are using AI to accelerate their careers and academic excellence.</p>
             <div className="mt-6 flex flex-wrap justify-center gap-3">
-              <Button asChild variant="secondary" className="rounded-full px-6">
-                <Link to="/dashboard">Get Started Free</Link>
+              <Button asChild variant="secondary" className="rounded-full px-6 bg-white hover:bg-slate-100 text-slate-900 cursor-pointer">
+                <Link to="/signup">Get Started Free</Link>
               </Button>
               <Button variant="outline" className="rounded-full border-primary-foreground/30 bg-transparent px-6 text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground">Book a Demo</Button>
             </div>

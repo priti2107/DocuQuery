@@ -9,6 +9,8 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SignupRouteImport } from './routes/signup'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as UserRouteImport } from './routes/_user'
 import { Route as IndexRouteImport } from './routes/index'
@@ -29,6 +31,16 @@ import { Route as UserCareersRouteImport } from './routes/_user.careers'
 import { Route as UserAnalyticsRouteImport } from './routes/_user.analytics'
 import { Route as UserAiQueryRouteImport } from './routes/_user.ai-query'
 
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -127,6 +139,8 @@ const UserAiQueryRoute = UserAiQueryRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
   '/ai-query': typeof UserAiQueryRoute
   '/analytics': typeof UserAnalyticsRoute
   '/careers': typeof UserCareersRoute
@@ -146,6 +160,8 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
   '/ai-query': typeof UserAiQueryRoute
   '/analytics': typeof UserAnalyticsRoute
   '/careers': typeof UserCareersRoute
@@ -168,6 +184,8 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_user': typeof UserRouteWithChildren
   '/admin': typeof AdminRouteWithChildren
+  '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
   '/_user/ai-query': typeof UserAiQueryRoute
   '/_user/analytics': typeof UserAnalyticsRoute
   '/_user/careers': typeof UserCareersRoute
@@ -190,6 +208,8 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/login'
+    | '/signup'
     | '/ai-query'
     | '/analytics'
     | '/careers'
@@ -209,6 +229,8 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/login'
+    | '/signup'
     | '/ai-query'
     | '/analytics'
     | '/careers'
@@ -230,6 +252,8 @@ export interface FileRouteTypes {
     | '/'
     | '/_user'
     | '/admin'
+    | '/login'
+    | '/signup'
     | '/_user/ai-query'
     | '/_user/analytics'
     | '/_user/careers'
@@ -252,10 +276,26 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   UserRoute: typeof UserRouteWithChildren
   AdminRoute: typeof AdminRouteWithChildren
+  LoginRoute: typeof LoginRoute
+  SignupRoute: typeof SignupRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin': {
       id: '/admin'
       path: '/admin'
@@ -444,6 +484,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   UserRoute: UserRouteWithChildren,
   AdminRoute: AdminRouteWithChildren,
+  LoginRoute: LoginRoute,
+  SignupRoute: SignupRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

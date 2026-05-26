@@ -1,4 +1,4 @@
-import { Link, Outlet, useLocation } from "@tanstack/react-router";
+import { Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import * as Icons from "lucide-react";
 import { userNav } from "@/lib/mock-data";
@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
+import { authStore } from "@/store/authStore";
+import { toast } from "sonner";
 
 function Icon({ name, className }: { name: string; className?: string }) {
   const C = (Icons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[name];
@@ -23,6 +25,15 @@ function Icon({ name, className }: { name: string; className?: string }) {
 export function UserLayout() {
   const { pathname } = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    authStore.logout();
+    toast.success("Successfully logged out", {
+      description: "Come back soon!",
+    });
+    navigate({ to: "/login" });
+  };
 
   // Filter out Profile since it goes into the Avatar dropdown
   const desktopNavItems = userNav.filter(item => item.label !== "Profile");
@@ -138,7 +149,10 @@ export function UserLayout() {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive cursor-pointer">
+                <DropdownMenuItem
+                  onClick={handleLogout}
+                  className="text-destructive cursor-pointer"
+                >
                   <Icons.LogOut className="mr-2 h-4 w-4" />
                   <span>Log out</span>
                 </DropdownMenuItem>
