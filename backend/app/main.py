@@ -29,10 +29,26 @@ Example:
 
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+import sys
+import bcrypt
+import passlib
 
 from app.core.config import settings
 from app.db.database import connect_to_mongo, close_mongo_connection
 from app.api import auth, documents
+
+
+# ============================================================================
+# DIAGNOSTIC INFORMATION (printed at startup)
+# ============================================================================
+print("\n" + "=" * 80)
+print("DOCUQUERY BACKEND STARTUP DIAGNOSTICS")
+print("=" * 80)
+print(f"Python executable: {sys.executable}")
+print(f"Python version: {sys.version}")
+print(f"Passlib version: {passlib.__version__}")
+print(f"Bcrypt version: {bcrypt.__version__}")
+print("=" * 80 + "\n")
 
 
 @asynccontextmanager
