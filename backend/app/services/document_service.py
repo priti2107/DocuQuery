@@ -28,6 +28,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from app.db.database import get_database
 from app.models.document import Document
 from app.services.extraction_service import extraction_service
+from app.services.chunking_service import chunking_service
 
 
 # ============================================================================
@@ -281,6 +282,57 @@ class DocumentService:
                     }
                 }
             )
+        
+        # Step 3: Chunk the extracted text (if extraction succeeded)
+        # Chunking happens after extraction, doesn't block upload
+        if document.extraction_status == "extracted" and document.extracted_text:
+            try:
+                # Call chunking service to split text into chunks
+                chunk_count, chunk_status = await chunking_service.process_document_chunks(
+                    db=documents_collection.database,
+                    extracted_text=document.extracted_text,
+                    document_id=document.id,
+                    user_id=user_id,
+                )
+                
+                # Update document with chunking results
+                document.chunk_count = chunk_count
+                document.chunk_status = "chunked" if chunk_count > 0 else "failed"
+                document.chunk_date = datetime.utcnow()
+                document.processing_status = "chunked"
+                
+                # Update MongoDB with chunk metadata
+                await documents_collection.update_one(
+                    {"_id": document.id},
+                    {
+                        "$set": {
+                            "chunk_count": chunk_count,
+                            "chunk_status": "chunked" if chunk_count > 0 else "failed",
+                            "chunk_date": datetime.utcnow(),
+                            "processing_status": "chunked",
+                        }
+                    }
+                )
+            
+            except Exception as e:
+                # If chunking fails, log error but don't fail the upload
+                # Document still has extracted_text available for future processing
+                error_msg = f"Text chunking failed: {str(e)}"
+                document.chunk_status = "failed"
+                document.chunk_error = error_msg
+                document.processing_status = "extracted"  # Fall back to extracted state
+                
+                # Update MongoDB with chunking error
+                await documents_collection.update_one(
+                    {"_id": document.id},
+                    {
+                        "$set": {
+                            "chunk_status": "failed",
+                            "chunk_error": error_msg,
+                            "processing_status": "extracted",
+                        }
+                    }
+                )
         
         return document
     
