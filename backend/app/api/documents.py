@@ -34,10 +34,14 @@ from app.schemas.document import (
     SearchRequest,
     SearchResponse,
     SearchResultChunk,
+    ChatRequest,
+    ChatResponse,
+    ChatSourceMetadata,
 )
 from app.services.document_service import document_service
 from app.services.embedding_service import embedding_service
 from app.services.retrieval_service import retrieval_service
+from app.services.llm_service import llm_service
 
 
 # ============================================================================
@@ -590,4 +594,193 @@ async def semantic_search(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Semantic search failed: {str(e)}"
+        )
+
+
+# ============================================================================
+# RAG CHAT ENDPOINT (FINAL RAG PIPELINE LAYER)
+# ============================================================================
+
+@router.post(
+    "/chat",
+    response_model=ChatResponse,
+    status_code=status.HTTP_200_OK,
+    summary="RAG Chat - Answer Questions from Documents",
+)
+async def chat(
+    chat_request: ChatRequest,
+    current_user: User = Depends(get_current_user),
+    top_k: int = 5,
+) -> ChatResponse:
+    """
+    Complete RAG pipeline chat endpoint.
+    
+    Answers user questions using document context through:
+    1. Semantic retrieval - Find relevant document chunks
+    2. Prompt building - Create context-aware prompt
+    3. LLM generation - Generate answer using local Ollama model
+    4. Source tracking - Return which chunks were used
+    
+    The RAG Pipeline:
+    User Query → Query Embedding → Similarity Search → Top Chunks →
+    Prompt Building → LLM Generation → AI Answer
+    
+    This completes the full RAG stack:
+    - MongoDB for document storage
+    - Embeddings for semantic understanding
+    - Cosine similarity for chunk retrieval
+    - Ollama LLM for answer generation
+    
+    Error Handling:
+    - 400: Empty query or invalid parameters
+    - 401: Invalid/missing token
+    - 422: Invalid request schema
+    - 503: Ollama API unreachable (LLM not running)
+    - 500: Other processing errors
+    
+    Requirements:
+    - Ollama must be running locally: ollama run mistral
+    - User must have uploaded documents with embeddings
+    
+    Request:
+    POST /chat
+    Authorization: Bearer <token>
+    {
+        "query": "What databases are mentioned in the documents?"
+    }
+    
+    Response (200 OK):
+    {
+        "query": "What databases are mentioned in the documents?",
+        "answer": "MongoDB and PostgreSQL are the databases mentioned...",
+        "sources": [
+            {
+                "document_id": "507f1f77bcf86cd799439011",
+                "chunk_index": 2,
+                "score": 0.91
+            },
+            {
+                "document_id": "507f1f77bcf86cd799439011",
+                "chunk_index": 5,
+                "score": 0.87
+            }
+        ],
+        "model": "mistral",
+        "num_chunks": 2
+    }
+    
+    Query Parameters:
+    - top_k: Number of context chunks to retrieve (default 5, max 20)
+    
+    Args:
+        chat_request: ChatRequest with "query" field
+        current_user: User from JWT token (injected by Depends)
+        top_k: Number of top chunks to use as context
+    
+    Returns:
+        ChatResponse with LLM answer and source metadata
+        
+    Raises:
+        HTTPException 400: Empty query or invalid parameters
+        HTTPException 503: Ollama API unreachable
+        HTTPException 500: LLM generation failed
+    """
+    import logging
+    from app.db.database import get_database
+    
+    logger = logging.getLogger(__name__)
+    
+    # Validate top_k parameter
+    if top_k < 1 or top_k > 20:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="top_k must be between 1 and 20"
+        )
+    
+    try:
+        # Step 1: Retrieve relevant chunks
+        logger.info(
+            f"🤖 RAG chat initiated by user {current_user.email}: "
+            f"'{chat_request.query[:60]}...'"
+        )
+        
+        db = get_database()
+        
+        retrieved_chunks = await retrieval_service.retrieve_relevant_chunks(
+            db=db,
+            query=chat_request.query,
+            top_k=top_k,
+            min_score=0.0,
+        )
+        
+        logger.info(
+            f"✅ Retrieved {len(retrieved_chunks)} context chunks for LLM"
+        )
+        
+        # Step 2: Generate LLM answer
+        logger.info("🧠 Calling LLM for answer generation...")
+        
+        llm_result = await llm_service.generate_answer(
+            query=chat_request.query,
+            chunks=retrieved_chunks,
+            model="mistral"  # or "tinyllama" for faster inference
+        )
+        
+        # Step 3: Format response with source metadata
+        sources = [
+            ChatSourceMetadata(
+                document_id=chunk["document_id"],
+                chunk_index=chunk["chunk_index"],
+                score=chunk["score"],
+            )
+            for chunk in retrieved_chunks
+        ]
+        
+        chat_response = ChatResponse(
+            query=chat_request.query,
+            answer=llm_result["answer"],
+            sources=sources,
+            model=llm_result["model"],
+            num_chunks=len(retrieved_chunks),
+        )
+        
+        logger.info(
+            f"✅ RAG chat completed for user {current_user.email}: "
+            f"generated answer from {len(retrieved_chunks)} chunks"
+        )
+        
+        return chat_response
+    
+    except ValueError as e:
+        # Query validation error
+        logger.error(f"Validation error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    
+    except RuntimeError as e:
+        # LLM service error - check if Ollama is running
+        error_msg = str(e).lower()
+        
+        if "ollama" in error_msg and ("unreachable" in error_msg or "connect" in error_msg):
+            logger.error(f"❌ Ollama API unreachable: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="LLM service (Ollama) is not running. "
+                       "Please start it with: ollama run mistral"
+            )
+        else:
+            logger.error(f"❌ LLM generation failed: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"LLM answer generation failed: {str(e)}"
+            )
+    
+    except Exception as e:
+        # Other errors
+        logger.error(f"❌ RAG chat failed: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"RAG chat failed: {str(e)}"
         )
