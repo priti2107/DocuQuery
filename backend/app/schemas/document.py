@@ -199,3 +199,37 @@ class UploadResponse(BaseModel):
                 "status": "uploaded"
             }
         }
+
+
+class EmbeddingResponse(BaseModel):
+    """
+    Schema for document embedding generation response.
+    
+    Returned after successfully generating embeddings for all chunks
+    of a document.
+    
+    Example:
+    {
+        "document_id": "507f1f77bcf86cd799439011",
+        "chunks_processed": 42,
+        "status": "completed"
+    }
+    
+    Attributes:
+        document_id: Document identifier
+        chunks_processed: Number of chunks embedded
+        status: Embedding generation status ("completed" or "failed")
+    """
+    
+    document_id: str = Field(..., description="Document ID")
+    chunks_processed: int = Field(..., ge=0, description="Number of chunks embedded")
+    status: str = Field(..., description="Embedding status (completed or failed)")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "document_id": "507f1f77bcf86cd799439011",
+                "chunks_processed": 42,
+                "status": "completed"
+            }
+        }
