@@ -30,8 +30,10 @@ from app.schemas.document import (
     DocumentListResponse,
     DocumentResponse,
     UploadResponse,
+    EmbeddingResponse,
 )
 from app.services.document_service import document_service
+from app.services.embedding_service import embedding_service
 
 
 # ============================================================================
@@ -327,3 +329,104 @@ async def delete_document(
         document_id=document_id,
         filename=document.filename,
     )
+
+
+@router.post(
+    "/{document_id}/generate-embeddings",
+    response_model=EmbeddingResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Generate embeddings for document chunks"
+)
+async def generate_document_embeddings(
+    document_id: str,
+    current_user: User = Depends(get_current_user),
+) -> EmbeddingResponse:
+    """
+    Generate embeddings for all chunks of a document.
+    
+    This is a test endpoint to manually trigger embedding generation.
+    In production, embeddings would be auto-generated after chunking.
+    
+    Process:
+    1. Verify document exists and belongs to user
+    2. Fetch all chunks for document from MongoDB
+    3. Generate embedding vectors for each chunk
+    4. Store embeddings in document_chunks collection
+    5. Return count of chunks embedded
+    
+    Embedding Model:
+    - sentence-transformers/all-MiniLM-L6-v2
+    - 384-dimensional embeddings
+    - Fast inference (~10ms per chunk)
+    
+    Error Handling:
+    - 404: Document not found or user doesn't own it
+    - 400: Document has no chunks to embed
+    - 500: Embedding generation failed
+    
+    Request:
+    POST /documents/507f1f77bcf86cd799439011/generate-embeddings
+    Authorization: Bearer <token>
+    
+    Response (200 OK):
+    {
+        "document_id": "507f1f77bcf86cd799439011",
+        "chunks_processed": 42,
+        "status": "completed"
+    }
+    
+    Args:
+        document_id: MongoDB ObjectId as string
+        current_user: User from JWT token (injected by Depends)
+    
+    Returns:
+        EmbeddingResponse with count of embedded chunks
+        
+    Raises:
+        HTTPException 404: Document not found or access denied
+        HTTPException 400: No chunks to embed
+        HTTPException 500: Embedding generation failed
+    """
+    from app.db.database import get_database
+    
+    # Verify document exists and belongs to user
+    document = await document_service.get_document(
+        document_id=document_id,
+        user_id=str(current_user.id),
+    )
+    
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found or you don't have permission to access it"
+        )
+    
+    try:
+        # Get database instance
+        db = get_database()
+        
+        # Generate embeddings for all chunks
+        chunks_processed, status_message = await embedding_service.process_document_embeddings(
+            db=db,
+            document_id=document_id,
+        )
+        
+        if chunks_processed == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=status_message or "No chunks to embed"
+            )
+        
+        return EmbeddingResponse(
+            document_id=document_id,
+            chunks_processed=chunks_processed,
+            status="completed",
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Embedding generation failed: {str(e)}"
+        )
