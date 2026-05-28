@@ -233,3 +233,149 @@ class EmbeddingResponse(BaseModel):
                 "status": "completed"
             }
         }
+
+
+# ============================================================================
+# SEMANTIC SEARCH SCHEMAS
+# ============================================================================
+
+class SearchRequest(BaseModel):
+    """
+    Schema for semantic search request.
+    
+    User provides a natural language query to search across all document chunks
+    using semantic similarity (not keyword matching).
+    
+    Example:
+    {
+        "query": "What programming languages and frameworks are used in this project?"
+    }
+    
+    Attributes:
+        query: Natural language search query/question
+    """
+    
+    query: str = Field(
+        ...,
+        min_length=1,
+        max_length=1000,
+        description="Natural language search query"
+    )
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "query": "What technologies and frameworks does this use?"
+            }
+        }
+
+
+class SearchResultChunk(BaseModel):
+    """
+    Schema for a single semantic search result.
+    
+    Represents one document chunk that matched the search query,
+    ranked by semantic similarity score.
+    
+    Example:
+    {
+        "chunk_index": 2,
+        "score": 0.92,
+        "content": "FastAPI is a modern web framework...",
+        "document_id": "507f1f77bcf86cd799439011",
+        "chunk_size": 512
+    }
+    
+    Attributes:
+        chunk_index: Position of chunk in original document
+        score: Cosine similarity score (0.0 to 1.0, higher = more similar)
+        content: Actual chunk text
+        document_id: Parent document ID
+        chunk_size: Number of tokens/characters in chunk
+    """
+    
+    chunk_index: int = Field(..., ge=0, description="Chunk index in document")
+    score: float = Field(..., ge=0.0, le=1.0, description="Similarity score (0-1)")
+    content: str = Field(..., description="Chunk text content")
+    document_id: str = Field(..., description="Parent document ID")
+    chunk_size: int = Field(..., ge=0, description="Chunk size")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "chunk_index": 2,
+                "score": 0.92,
+                "content": "FastAPI is a modern, high-performance web framework for building APIs with Python...",
+                "document_id": "507f1f77bcf86cd799439011",
+                "chunk_size": 512
+            }
+        }
+
+
+class SearchResponse(BaseModel):
+    """
+    Schema for semantic search response.
+    
+    Returns list of document chunks that match the user's query,
+    ranked by semantic similarity (highest scores first).
+    
+    Workflow:
+    1. Convert query to embedding
+    2. Compare with all chunk embeddings
+    3. Sort by cosine similarity
+    4. Return top-k matches
+    
+    Example:
+    {
+        "query": "What is FastAPI?",
+        "matches": [
+            {
+                "chunk_index": 0,
+                "score": 0.95,
+                "content": "FastAPI is...",
+                "document_id": "507f1f77bcf86cd799439011",
+                "chunk_size": 512
+            },
+            {
+                "chunk_index": 3,
+                "score": 0.87,
+                "content": "FastAPI provides...",
+                "document_id": "507f1f77bcf86cd799439011",
+                "chunk_size": 512
+            }
+        ]
+    }
+    
+    Attributes:
+        query: The search query that was processed
+        matches: List of SearchResultChunk objects, sorted by score (descending)
+    """
+    
+    query: str = Field(..., description="Original search query")
+    matches: List[SearchResultChunk] = Field(
+        ...,
+        description="Matched chunks ranked by similarity score (highest first)"
+    )
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "query": "What is FastAPI?",
+                "matches": [
+                    {
+                        "chunk_index": 0,
+                        "score": 0.95,
+                        "content": "FastAPI is a modern web framework...",
+                        "document_id": "507f1f77bcf86cd799439011",
+                        "chunk_size": 512
+                    },
+                    {
+                        "chunk_index": 3,
+                        "score": 0.87,
+                        "content": "FastAPI provides async support...",
+                        "document_id": "507f1f77bcf86cd799439011",
+                        "chunk_size": 512
+                    }
+                ]
+            }
+        }

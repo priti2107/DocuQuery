@@ -31,9 +31,13 @@ from app.schemas.document import (
     DocumentResponse,
     UploadResponse,
     EmbeddingResponse,
+    SearchRequest,
+    SearchResponse,
+    SearchResultChunk,
 )
 from app.services.document_service import document_service
 from app.services.embedding_service import embedding_service
+from app.services.retrieval_service import retrieval_service
 
 
 # ============================================================================
@@ -429,4 +433,161 @@ async def generate_document_embeddings(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Embedding generation failed: {str(e)}"
+        )
+
+
+@router.post(
+    "/search",
+    response_model=SearchResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Semantic search across documents"
+)
+async def semantic_search(
+    search_request: SearchRequest,
+    current_user: User = Depends(get_current_user),
+    top_k: int = 5,
+) -> SearchResponse:
+    """
+    Perform semantic search across all document chunks.
+    
+    Uses embeddings to find semantically similar chunks, not keyword matching.
+    Returns top-k most relevant chunks ranked by cosine similarity.
+    
+    RAG Pipeline Phase - Retrieval:
+    1. Convert user query to embedding (384 dimensions)
+    2. Fetch all chunks with embeddings from MongoDB
+    3. Compute cosine similarity between query and each chunk
+    4. Sort by similarity score (descending)
+    5. Return top-k chunks
+    
+    Key Differences from Keyword Search:
+    - Keyword search: "FastAPI" only matches exact/fuzzy "FastAPI"
+    - Semantic search: "modern web framework" matches chunks about FastAPI
+    - Works with synonyms, rephrasing, different vocabulary
+    - Captures meaning, not just words
+    
+    Example Semantic Matches:
+    - Query: "Which Python web framework is used?"
+    - Would match chunks about "FastAPI", "Django", "Flask"
+    - Even if exact phrase not in chunk
+    
+    Similarity Scores:
+    - Range: 0.0 (completely different) to 1.0 (identical)
+    - Typical relevant results: > 0.5
+    - Very relevant: > 0.75
+    - Highly relevant: > 0.9
+    
+    Error Handling:
+    - 400: Empty query
+    - 401: Invalid/missing token
+    - 422: Invalid request schema
+    - 500: Embedding/similarity computation failed
+    
+    Request:
+    POST /documents/search
+    Authorization: Bearer <token>
+    {
+        "query": "What programming languages are used?"
+    }
+    
+    Response (200 OK):
+    {
+        "query": "What programming languages are used?",
+        "matches": [
+            {
+                "chunk_index": 0,
+                "score": 0.92,
+                "content": "FastAPI uses Python 3.7+...",
+                "document_id": "507f1f77bcf86cd799439011",
+                "chunk_size": 512
+            },
+            {
+                "chunk_index": 3,
+                "score": 0.85,
+                "content": "JavaScript and TypeScript for frontend...",
+                "document_id": "507f1f77bcf86cd799439012",
+                "chunk_size": 512
+            }
+        ]
+    }
+    
+    Query Parameters:
+    - top_k: Number of top results to return (default 5, max 20)
+    
+    Args:
+        search_request: SearchRequest with "query" field
+        current_user: User from JWT token (injected by Depends)
+        top_k: Number of top results to return (query parameter)
+    
+    Returns:
+        SearchResponse with matched chunks sorted by score
+        
+    Raises:
+        HTTPException 400: Empty query or invalid parameters
+        HTTPException 500: Search computation failed
+    """
+    from app.db.database import get_database
+    
+    # Validate top_k parameter
+    if top_k < 1 or top_k > 20:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="top_k must be between 1 and 20"
+        )
+    
+    try:
+        # Get database instance
+        db = get_database()
+        
+        # Perform semantic search
+        logger = __import__("logging").getLogger(__name__)
+        logger.info(
+            f"Semantic search initiated by user {current_user.email}: "
+            f"'{search_request.query[:60]}...'"
+        )
+        
+        matched_chunks = await retrieval_service.retrieve_relevant_chunks(
+            db=db,
+            query=search_request.query,
+            top_k=top_k,
+            min_score=0.0,  # Return all matches, even low-confidence ones
+        )
+        
+        # Convert matched chunks to SearchResultChunk schema
+        result_chunks = [
+            SearchResultChunk(
+                chunk_index=chunk["chunk_index"],
+                score=chunk["score"],
+                content=chunk["content"],
+                document_id=chunk["document_id"],
+                chunk_size=chunk["chunk_size"],
+            )
+            for chunk in matched_chunks
+        ]
+        
+        logger = __import__("logging").getLogger(__name__)
+        logger.info(
+            f"Semantic search completed for user {current_user.email}: "
+            f"found {len(result_chunks)} relevant chunks"
+        )
+        
+        return SearchResponse(
+            query=search_request.query,
+            matches=result_chunks,
+        )
+    
+    except ValueError as e:
+        # Query validation error
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        # Search computation error
+        logger = __import__("logging").getLogger(__name__)
+        logger.error(f"Semantic search failed: {str(e)}", exc_info=True)
+        
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Semantic search failed: {str(e)}"
         )
