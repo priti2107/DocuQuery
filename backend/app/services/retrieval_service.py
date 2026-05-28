@@ -10,6 +10,7 @@ The RetrievalService completes the first phase of the RAG pipeline:
 User Query → Query Embedding → Similarity Search → Top Relevant Chunks
 """
 
+import asyncio
 import logging
 from typing import List, Dict, Any, Tuple
 import numpy as np
@@ -72,7 +73,8 @@ class RetrievalService:
         
         try:
             # Use EmbeddingService to generate embedding (consistent with chunk embeddings)
-            embedding = await embedding_service.generate_embedding(query.strip())
+            # Run CPU-bound embedding generation in thread pool to avoid blocking
+            embedding = await asyncio.to_thread(embedding_service.generate_embedding, query.strip())
             
             logger.info(f"✅ Query embedding generated: {len(embedding)} dimensions")
             return embedding
@@ -276,10 +278,11 @@ class RetrievalService:
             # Step 5: Get top-k results
             top_results = results_with_scores[:top_k]
             
+            top_score_str = (f"{top_results[0]['score']:.4f}" if top_results else "N/A")
             logger.info(
                 f"✅ Semantic search completed. Returning {len(top_results)} / {top_k} "
                 f"chunks (threshold: {min_score:.2f}). "
-                f"Top score: {top_results[0]['score']:.4f if top_results else 'N/A'}"
+                f"Top score: {top_score_str}"
             )
             
             # Log top matches
