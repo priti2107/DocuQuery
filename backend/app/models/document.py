@@ -85,6 +85,14 @@ class Document(BaseModel):
     extraction_status: str = Field(default="pending", description="Extraction status: pending, extracted, failed")
     extraction_error: Optional[str] = Field(default=None, description="Error message if extraction failed")
     extraction_date: Optional[datetime] = Field(default=None, description="When text extraction completed")
+    
+    # Text chunking
+    chunk_count: int = Field(default=0, description="Number of chunks created from extracted text")
+    chunk_status: str = Field(default="pending", description="Chunking status: pending, chunked, failed")
+    chunk_error: Optional[str] = Field(default=None, description="Error message if chunking failed")
+    chunk_date: Optional[datetime] = Field(default=None, description="When chunking completed")
+    processing_status: str = Field(default="uploaded", description="Overall status: uploaded, extracting, extracted, chunking, chunked, error")
+    
     @field_validator("id", mode="before")
     @classmethod
     def convert_object_id_to_string(cls, v: Any) -> str | None:
@@ -126,6 +134,11 @@ class Document(BaseModel):
                 "text_length": 15234,
                 "extraction_status": "extracted",
                 "extraction_error": None,
-                "extraction_date": "2024-05-24T10:30:15Z"
+                "extraction_date": "2024-05-24T10:30:15Z",
+                "chunk_count": 15,
+                "chunk_status": "chunked",
+                "chunk_error": None,
+                "chunk_date": "2024-05-24T10:30:20Z",
+                "processing_status": "chunked"
             }
         }
