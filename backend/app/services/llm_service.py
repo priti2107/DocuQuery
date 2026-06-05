@@ -89,18 +89,24 @@ class LLMService:
             for i, chunk in enumerate(chunks)
         ])
         
-        # Build the full prompt with instructions
-        prompt = f"""Context:
+        # Build the full prompt with strict RAG instructions
+        prompt = f"""You are a document QA assistant.
+
+Answer ONLY using the provided context.
+
+If the answer is not explicitly present in the context, say:
+'I could not find that information in the document.'
+
+Do not use external knowledge.
+Do not define terms.
+Do not explain concepts.
+Provide concise factual answers.
+
+Context:
 {context_text if context_text else "No relevant context found."}
 
 Question:
 {query}
-
-Instructions:
-- Answer ONLY using the provided context above
-- Be concise and direct
-- If the answer is not found in the context, respond with: "I could not find relevant information in the uploaded documents."
-- Do NOT make up or assume information not in the context
 
 Answer:"""
         
@@ -170,7 +176,12 @@ Answer:"""
             payload = {
                 "model": model,
                 "prompt": prompt,
-                "stream": False  # Non-streaming for simpler response parsing
+                "stream": False,  # Non-streaming for simpler response parsing
+                "options": {
+                    "temperature": 0.1,  # Low temperature for factual extraction
+                    "top_p": 0.9,
+                    "num_predict": 512,  # Limit response length for conciseness
+                }
             }
             
             logger.debug(f"Ollama request payload: model={model}, prompt_length={len(prompt)}")
