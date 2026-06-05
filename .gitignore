@@ -1,6 +1,25 @@
-backend/venv/
-backend/.env
-backend/uploads/
+# Frontend
+node_modules/
+dist/
+
+# Python
+venv/
+.venv/
 __pycache__/
 *.pyc
+
+# Environment
+.env
+.env.local
+.env.atlas
+.env.*
+
+# IDE
+.vscode/
+.idea/
+
+# OS
 .DS_Store
+
+# Uploads
+backend/uploads/
