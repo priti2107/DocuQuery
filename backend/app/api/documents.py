@@ -449,7 +449,7 @@ async def generate_document_embeddings(
 async def semantic_search(
     search_request: SearchRequest,
     current_user: User = Depends(get_current_user),
-    top_k: int = 5,
+    top_k: int = 10,
 ) -> SearchResponse:
     """
     Perform semantic search across all document chunks.
@@ -516,7 +516,7 @@ async def semantic_search(
     }
     
     Query Parameters:
-    - top_k: Number of top results to return (default 5, max 20)
+    - top_k: Number of top results to return (default 10, max 20)
     
     Args:
         search_request: SearchRequest with "query" field
@@ -550,9 +550,23 @@ async def semantic_search(
             f"'{search_request.query[:60]}...'"
         )
         
+        # Verify document ownership if document_id is provided
+        if search_request.document_id:
+            doc = await document_service.get_document(
+                document_id=search_request.document_id,
+                user_id=str(current_user.id)
+            )
+            if not doc:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Document not found or access denied"
+                )
+                
         matched_chunks = await retrieval_service.retrieve_relevant_chunks(
             db=db,
             query=search_request.query,
+            user_id=str(current_user.id),
+            document_id=search_request.document_id,
             top_k=top_k,
             min_score=0.0,  # Return all matches, even low-confidence ones
         )
@@ -580,6 +594,8 @@ async def semantic_search(
             matches=result_chunks,
         )
     
+    except HTTPException:
+        raise
     except ValueError as e:
         # Query validation error
         raise HTTPException(
@@ -610,7 +626,7 @@ async def semantic_search(
 async def chat(
     chat_request: ChatRequest,
     current_user: User = Depends(get_current_user),
-    top_k: int = 5,
+    top_k: int = 10,
 ) -> ChatResponse:
     """
     Complete RAG pipeline chat endpoint.
@@ -670,7 +686,7 @@ async def chat(
     }
     
     Query Parameters:
-    - top_k: Number of context chunks to retrieve (default 5, max 20)
+    - top_k: Number of context chunks to retrieve (default 10, max 20)
     
     Args:
         chat_request: ChatRequest with "query" field
@@ -706,9 +722,23 @@ async def chat(
         
         db = get_database()
         
+        # Verify document ownership if document_id is provided
+        if chat_request.document_id:
+            doc = await document_service.get_document(
+                document_id=chat_request.document_id,
+                user_id=str(current_user.id)
+            )
+            if not doc:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Document not found or access denied"
+                )
+                
         retrieved_chunks = await retrieval_service.retrieve_relevant_chunks(
             db=db,
             query=chat_request.query,
+            user_id=str(current_user.id),
+            document_id=chat_request.document_id,
             top_k=top_k,
             min_score=0.0,
         )
@@ -751,6 +781,8 @@ async def chat(
         
         return chat_response
     
+    except HTTPException:
+        raise
     except ValueError as e:
         # Query validation error
         logger.error(f"Validation error: {str(e)}")

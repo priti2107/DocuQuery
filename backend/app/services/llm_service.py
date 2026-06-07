@@ -83,24 +83,29 @@ class LLMService:
         """
         logger.info(f"🔨 Building RAG prompt with {len(chunks)} chunks for query: '{query[:60]}...'")
         
-        # Format retrieved chunks as context
+        # Format retrieved chunks as context (no mention of "Chunk" headers)
         context_text = "\n\n".join([
-            f"[Chunk {i+1}]\n{chunk.get('content', '')}"
-            for i, chunk in enumerate(chunks)
+            chunk.get('content', '')
+            for chunk in chunks
         ])
         
         # Build the full prompt with strict RAG instructions
-        prompt = f"""You are a document QA assistant.
+        prompt = f"""You are a document analysis assistant.
 
-Answer ONLY using the provided context.
+Your task is to answer questions ONLY from the provided document context.
 
-If the answer is not explicitly present in the context, say:
-'I could not find that information in the document.'
+Rules:
 
-Do not use external knowledge.
-Do not define terms.
-Do not explain concepts.
-Provide concise factual answers.
+- Never mention chunks.
+- Never mention training data.
+- Never mention being an AI model.
+- Never explain what you can or cannot do.
+- Never use external knowledge.
+- If the user asks for a summary, summarize the retrieved context.
+- If the user asks what the document is about, describe the document's contents.
+- If the answer is not present in the context, reply exactly:
+
+"I could not find that information in the selected document."
 
 Context:
 {context_text if context_text else "No relevant context found."}
