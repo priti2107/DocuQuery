@@ -24,10 +24,10 @@ export class AuthService {
    */
   private static async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
   ): Promise<T> {
     const url = `${BASE_URL}${endpoint}`;
-    
+
     // Set headers
     const headers = new Headers(options.headers || {});
     if (!headers.has("Content-Type") && !(options.body instanceof FormData)) {
@@ -63,7 +63,11 @@ export class AuthService {
    * Register a new user account.
    * Maps `name` input to `full_name` required by backend.
    */
-  static async signup(name: string, email: string, password: string): Promise<TokenResponse> {
+  static async signup(
+    name: string,
+    email: string,
+    password: string,
+  ): Promise<TokenResponse> {
     return this.request<TokenResponse>("/auth/register", {
       method: "POST",
       body: JSON.stringify({

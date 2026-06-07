@@ -50,11 +50,13 @@ export const authStore = {
  * A custom React hook to access authentication state and status reactively.
  */
 export function useAuth() {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(authStore.isAuthenticated());
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(
+    authStore.isAuthenticated(),
+  );
 
   useEffect(() => {
     setIsAuthenticated(authStore.isAuthenticated());
-    
+
     // Subscribe to state updates (e.g., login, logout events)
     const unsubscribe = authStore.subscribe((status) => {
       setIsAuthenticated(status);
