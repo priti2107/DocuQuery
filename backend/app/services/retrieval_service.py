@@ -308,24 +308,6 @@ class RetrievalService:
                 f"Top score: {top_score_str}"
             )
             
-            # Temporary debug logging: Diagnostic Logging for every search/chat request
-            diag_log = (
-                f"\nQuery: {query}\n\n"
-                f"Top Results:\n"
-                f"Rank | Score | Chunk | Document\n"
-            )
-            for rank, res in enumerate(top_results, 1):
-                content_preview = res['content'][:50].replace('\n', ' ')
-                diag_log += f"{rank} | {res['score']:.4f} | Chunk {res['chunk_index']} ({content_preview}) | {res['document_id']}\n"
-            logger.info(diag_log)
-            
-            # Log top matches (for backwards compatibility/additional debug)
-            for i, result in enumerate(top_results, 1):
-                logger.debug(
-                    f"  {i}. Score: {result['score']:.4f} | "
-                    f"Content preview: {result['content'][:50]}..."
-                )
-            
             return top_results
             
         except ValueError as e:

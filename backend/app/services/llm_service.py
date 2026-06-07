@@ -51,7 +51,7 @@ class LLMService:
     
     # Ollama API configuration
     OLLAMA_API_URL = "http://localhost:11434/api/generate"
-    DEFAULT_MODEL = "mistral"
+    DEFAULT_MODEL = "llama3.2:1b"
     REQUEST_TIMEOUT = 300.0  # 5 minutes for LLM inference
     
     @staticmethod
@@ -63,52 +63,58 @@ class LLMService:
         1. Include all retrieved chunks as context
         2. Clearly present the user query
         3. Give instructions to answer from context only
-        
-        Args:
-            query (str): User's question/query
-            chunks (List[Dict]): Retrieved chunks from retrieval_service
-                                 Each chunk has: content, score, chunk_index, document_id
-            
-        Returns:
-            str: Formatted RAG prompt for LLM
-            
-        Example:
-            >>> chunks = [
-            ...     {"content": "FastAPI is a web framework", "score": 0.92, ...},
-            ...     {"content": "Python is used for APIs", "score": 0.88, ...}
-            ... ]
-            >>> prompt = LLMService.build_rag_prompt("What is FastAPI?", chunks)
-            >>> len(prompt) > 100
-            True
         """
         logger.info(f"🔨 Building RAG prompt with {len(chunks)} chunks for query: '{query[:60]}...'")
+        
+        # Reverse chunk order: most relevant chunk (index 0 = highest score) goes last
+        # LLMs have recency bias — content closest to the Question line gets most attention
+        ordered_chunks = list(reversed(chunks))
         
         # Format retrieved chunks as context (no mention of "Chunk" headers)
         context_text = "\n\n".join([
             chunk.get('content', '')
-            for chunk in chunks
+            for chunk in ordered_chunks
         ])
         
-        # Build the full prompt with strict RAG instructions
-        prompt = f"""You are a document analysis assistant.
+        # Detect if this is a summary query
+        is_summary = False
+        q_lower = query.lower()
+        if any(kw in q_lower for kw in ["summar", "overview", "synopsis", "tldr", "tl;dr"]):
+            is_summary = True
+            
+        if is_summary:
+            prompt = f"""You are a document extraction assistant.
 
-Your task is to answer questions ONLY from the provided document context.
+Answer ONLY using the provided context.
 
 Rules:
-
-- Never mention chunks.
-- Never mention training data.
-- Never mention being an AI model.
-- Never explain what you can or cannot do.
-- Never use external knowledge.
-- If the user asks for a summary, summarize the retrieved context.
-- If the user asks what the document is about, describe the document's contents.
-- If the answer is not present in the context, reply exactly:
-
-"I could not find that information in the selected document."
+- Summarize the main facts from the context.
+- Do not add any introductory or concluding remarks.
+- Do not add preambles, disclaimers, or safety warnings.
+- Return ONLY the summary text.
 
 Context:
-{context_text if context_text else "No relevant context found."}
+{context_text if context_text else "NOT_FOUND"}
+
+Question:
+{query}
+
+Answer:"""
+        else:
+            prompt = f"""You are a document extraction assistant.
+
+Answer ONLY using the provided context.
+
+Rules:
+- Extract the value exactly as it appears in the context.
+- Do not simplify, shorten, format, or omit any details.
+- For lists or multiple items, separate them with commas on a single line.
+- Return ONLY the exact extracted text.
+- Do not explain, or add introductory/concluding text.
+- If the answer is not in the context, return exactly: NOT_FOUND
+
+Context:
+{context_text if context_text else "NOT_FOUND"}
 
 Question:
 {query}
@@ -128,38 +134,6 @@ Answer:"""
     ) -> Dict[str, Any]:
         """
         Generate LLM answer using retrieved context.
-        
-        Process:
-        1. Build RAG prompt with context
-        2. Call Ollama API
-        3. Parse LLM response
-        4. Return formatted answer with metadata
-        
-        Args:
-            query (str): User's question
-            chunks (List[Dict]): Retrieved context chunks
-            model (str): Ollama model name (default: mistral)
-            
-        Returns:
-            Dict with keys:
-            - answer (str): Generated answer from LLM
-            - query (str): Original query echoed back
-            - model (str): Model used for generation
-            - num_chunks (int): Number of context chunks used
-            - timestamp (str): ISO format timestamp
-            
-        Raises:
-            ValueError: If query or chunks invalid
-            RuntimeError: If Ollama API unreachable or fails
-            
-        Example:
-            >>> result = await LLMService.generate_answer(
-            ...     "What databases are used?",
-            ...     [{"content": "MongoDB is used", "score": 0.95}],
-            ...     model="mistral"
-            ... )
-            >>> result["answer"]
-            "MongoDB is used in this project."
         """
         logger.info(f"🤖 Generating LLM answer using model: {model}")
         
@@ -168,13 +142,19 @@ Answer:"""
             raise ValueError("Query cannot be empty")
         
         if not chunks:
-            logger.warning("No context chunks provided for answer generation")
-            chunks = []
+            logger.warning("No context chunks provided for answer generation. Returning NOT_FOUND.")
+            return {
+                "answer": "NOT_FOUND",
+                "query": query,
+                "model": model,
+                "num_chunks": 0,
+                "timestamp": datetime.utcnow().isoformat() + "Z"
+            }
         
         try:
             # Step 1: Build RAG prompt
             prompt = LLMService.build_rag_prompt(query, chunks)
-            
+
             # Step 2: Prepare Ollama API call
             logger.info(f"📡 Calling Ollama API at {LLMService.OLLAMA_API_URL}")
             
@@ -183,8 +163,8 @@ Answer:"""
                 "prompt": prompt,
                 "stream": False,  # Non-streaming for simpler response parsing
                 "options": {
-                    "temperature": 0.1,  # Low temperature for factual extraction
-                    "top_p": 0.9,
+                    "temperature": 0.0,  # Low temperature for deterministic factual extraction
+                    "top_p": 0.1,
                     "num_predict": 512,  # Limit response length for conciseness
                 }
             }
@@ -208,10 +188,20 @@ Answer:"""
             # Step 4: Parse response
             response_data = response.json()
             answer_text = response_data.get("response", "").strip()
-            
-            if not answer_text:
-                logger.warning("Ollama returned empty response")
-                answer_text = "I could not generate a response. Please try again."
+
+            # Normalize/clean answer to NOT_FOUND if it indicates failure or is empty
+            answer_clean = answer_text.strip(" '\"`.,").strip()
+            refusal_keywords = [
+                "i cannot assist", "i cannot extract", "i cannot identify", 
+                "i can't assist", "i am unable to", "i'm unable to",
+                "not found", "information is not available", "not mention"
+            ]
+            if (not answer_clean or 
+                answer_clean.upper() == "NOT_FOUND" or 
+                any(kw in answer_clean.lower() for kw in refusal_keywords)):
+                answer_text = "NOT_FOUND"
+            else:
+                answer_text = answer_clean
             
             logger.info(f"✅ LLM answer generated: {len(answer_text)} characters")
             logger.debug(f"Answer preview: {answer_text[:100]}...")
