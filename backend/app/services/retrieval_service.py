@@ -12,7 +12,7 @@ User Query → Query Embedding → Similarity Search → Top Relevant Chunks
 
 import asyncio
 import logging
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 from bson import ObjectId
@@ -20,7 +20,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.services.embedding_service import embedding_service
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn.error")
 
 
 class RetrievalService:
@@ -146,7 +146,9 @@ class RetrievalService:
     async def retrieve_relevant_chunks(
         db: AsyncIOMotorDatabase,
         query: str,
-        top_k: int = 5,
+        user_id: str,
+        document_id: Optional[str] = None,
+        top_k: int = 10,
         min_score: float = 0.0
     ) -> List[Dict[str, Any]]:
         """
@@ -163,7 +165,9 @@ class RetrievalService:
         Args:
             db (AsyncIOMotorDatabase): Async MongoDB database connection
             query (str): Search query/question
-            top_k (int): Number of top chunks to return (default: 5)
+            user_id (str): User ID requesting retrieval (security check)
+            document_id (Optional[str]): Optional document ID to restrict query
+            top_k (int): Number of top chunks to return (default: 10)
             min_score (float): Minimum similarity score to include (default: 0.0)
             
         Returns:
@@ -207,13 +211,18 @@ class RetrievalService:
             logger.debug("Step 1: Generating query embedding...")
             query_embedding = await RetrievalService.generate_query_embedding(query)
             
-            # Step 2: Fetch all document chunks with embeddings
-            logger.debug("Step 2: Fetching chunks from MongoDB...")
+            # Step 2: Fetch document chunks with embeddings scoped by user_id and optionally document_id
+            logger.debug("Step 2: Fetching scoped chunks from MongoDB...")
+            query_filter = {
+                "embedding_vector": {"$exists": True, "$ne": None},
+                "embedding_status": "completed",
+                "user_id": user_id
+            }
+            if document_id:
+                query_filter["document_id"] = document_id
+                
             chunks_cursor = db["document_chunks"].find(
-                {
-                    "embedding_vector": {"$exists": True, "$ne": None},
-                    "embedding_status": "completed"
-                },
+                query_filter,
                 {
                     "_id": 1,
                     "document_id": 1,
@@ -275,8 +284,22 @@ class RetrievalService:
             # Sort by score descending
             results_with_scores.sort(key=lambda x: x["score"], reverse=True)
             
-            # Step 5: Get top-k results
-            top_results = results_with_scores[:top_k]
+            # Step 5: Deduplicate Retrieved Chunks before applying top_k
+            logger.info(f"Total results before deduplication: {len(results_with_scores)}")
+            
+            seen = set()
+            deduplicated = []
+            for result in results_with_scores:
+                fingerprint = hash(result["content"][:200])
+                if fingerprint in seen:
+                    continue
+                seen.add(fingerprint)
+                deduplicated.append(result)
+                
+            logger.info(f"Total results after deduplication: {len(deduplicated)}")
+            
+            # Get top-k results
+            top_results = deduplicated[:top_k]
             
             top_score_str = (f"{top_results[0]['score']:.4f}" if top_results else "N/A")
             logger.info(
@@ -285,7 +308,18 @@ class RetrievalService:
                 f"Top score: {top_score_str}"
             )
             
-            # Log top matches
+            # Temporary debug logging: Diagnostic Logging for every search/chat request
+            diag_log = (
+                f"\nQuery: {query}\n\n"
+                f"Top Results:\n"
+                f"Rank | Score | Chunk | Document\n"
+            )
+            for rank, res in enumerate(top_results, 1):
+                content_preview = res['content'][:50].replace('\n', ' ')
+                diag_log += f"{rank} | {res['score']:.4f} | Chunk {res['chunk_index']} ({content_preview}) | {res['document_id']}\n"
+            logger.info(diag_log)
+            
+            # Log top matches (for backwards compatibility/additional debug)
             for i, result in enumerate(top_results, 1):
                 logger.debug(
                     f"  {i}. Score: {result['score']:.4f} | "

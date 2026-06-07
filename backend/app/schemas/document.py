@@ -248,11 +248,13 @@ class SearchRequest(BaseModel):
     
     Example:
     {
-        "query": "What programming languages and frameworks are used in this project?"
+        "query": "What programming languages and frameworks are used in this project?",
+        "document_id": "507f1f77bcf86cd799439011"
     }
     
     Attributes:
         query: Natural language search query/question
+        document_id: Optional document ID to scope search
     """
     
     query: str = Field(
@@ -261,11 +263,16 @@ class SearchRequest(BaseModel):
         max_length=1000,
         description="Natural language search query"
     )
+    document_id: Optional[str] = Field(
+        default=None,
+        description="Optional document ID to scope search"
+    )
     
     class Config:
         json_schema_extra = {
             "example": {
-                "query": "What technologies and frameworks does this use?"
+                "query": "What technologies and frameworks does this use?",
+                "document_id": "507f1f77bcf86cd799439011"
             }
         }
 
@@ -397,11 +404,13 @@ class ChatRequest(BaseModel):
     
     Example:
     {
-        "query": "What databases are mentioned in the documents?"
+        "query": "What databases are mentioned in the documents?",
+        "document_id": "507f1f77bcf86cd799439011"
     }
     
     Attributes:
         query: Natural language question to answer
+        document_id: Optional document ID to scope chat
     """
     
     query: str = Field(
@@ -410,11 +419,16 @@ class ChatRequest(BaseModel):
         max_length=1000,
         description="Natural language question to answer"
     )
+    document_id: Optional[str] = Field(
+        default=None,
+        description="Optional document ID to scope chat"
+    )
     
     class Config:
         json_schema_extra = {
             "example": {
-                "query": "What technologies and frameworks are used?"
+                "query": "What technologies and frameworks are used?",
+                "document_id": "507f1f77bcf86cd799439011"
             }
         }
 
