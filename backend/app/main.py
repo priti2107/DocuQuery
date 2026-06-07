@@ -30,26 +30,10 @@ Example:
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import sys
-import bcrypt
-import passlib
 
 from app.core.config import settings
 from app.db.database import connect_to_mongo, close_mongo_connection
 from app.api import auth, documents
-
-
-# ============================================================================
-# DIAGNOSTIC INFORMATION (printed at startup)
-# ============================================================================
-print("\n" + "=" * 80)
-print("DOCUQUERY BACKEND STARTUP DIAGNOSTICS")
-print("=" * 80)
-print(f"Python executable: {sys.executable}")
-print(f"Python version: {sys.version}")
-print(f"Passlib version: {passlib.__version__}")
-print(f"Bcrypt version: {bcrypt.__version__}")
-print("=" * 80 + "\n")
 
 
 @asynccontextmanager
@@ -84,6 +68,10 @@ async def lifespan(app: FastAPI):
         app: FastAPI application instance
     """
     # ===== STARTUP =====
+    # Configure logging level for app
+    import logging
+    logging.getLogger("app").setLevel(logging.INFO)
+    
     # Connect to MongoDB when application starts
     await connect_to_mongo()
 

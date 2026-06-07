@@ -545,30 +545,14 @@ async def semantic_search(
         
         # Perform semantic search
         logger = __import__("logging").getLogger(__name__)
-        logger.info(
-            f"Semantic search initiated by user {current_user.email}: "
-            f"'{search_request.query[:60]}...'"
-        )
-        
-        # Verify document ownership if document_id is provided
-        if search_request.document_id:
-            doc = await document_service.get_document(
-                document_id=search_request.document_id,
-                user_id=str(current_user.id)
-            )
-            if not doc:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Document not found or access denied"
-                )
-                
+
         matched_chunks = await retrieval_service.retrieve_relevant_chunks(
             db=db,
             query=search_request.query,
             user_id=str(current_user.id),
             document_id=search_request.document_id,
             top_k=top_k,
-            min_score=0.0,  # Return all matches, even low-confidence ones
+            min_score=0.0,
         )
         
         # Convert matched chunks to SearchResultChunk schema
@@ -583,10 +567,9 @@ async def semantic_search(
             for chunk in matched_chunks
         ]
         
-        logger = __import__("logging").getLogger(__name__)
         logger.info(
-            f"Semantic search completed for user {current_user.email}: "
-            f"found {len(result_chunks)} relevant chunks"
+            f"Search completed: {len(result_chunks)} chunks returned "
+            f"(user={current_user.email}, doc={search_request.document_id!r})"
         )
         
         return SearchResponse(
@@ -605,8 +588,7 @@ async def semantic_search(
     except Exception as e:
         # Search computation error
         logger = __import__("logging").getLogger(__name__)
-        logger.error(f"Semantic search failed: {str(e)}", exc_info=True)
-        
+        logger.error(f"Semantic search failed: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Semantic search failed: {str(e)}"
@@ -714,26 +696,8 @@ async def chat(
         )
     
     try:
-        # Step 1: Retrieve relevant chunks
-        logger.info(
-            f"🤖 RAG chat initiated by user {current_user.email}: "
-            f"'{chat_request.query[:60]}...'"
-        )
-        
         db = get_database()
-        
-        # Verify document ownership if document_id is provided
-        if chat_request.document_id:
-            doc = await document_service.get_document(
-                document_id=chat_request.document_id,
-                user_id=str(current_user.id)
-            )
-            if not doc:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Document not found or access denied"
-                )
-                
+
         retrieved_chunks = await retrieval_service.retrieve_relevant_chunks(
             db=db,
             query=chat_request.query,
@@ -743,17 +707,13 @@ async def chat(
             min_score=0.0,
         )
         
-        logger.info(
-            f"✅ Retrieved {len(retrieved_chunks)} context chunks for LLM"
-        )
-        
         # Step 2: Generate LLM answer
         logger.info("🧠 Calling LLM for answer generation...")
         
         llm_result = await llm_service.generate_answer(
             query=chat_request.query,
             chunks=retrieved_chunks,
-            model="mistral"  # or "tinyllama" for faster inference
+            model=llm_service.DEFAULT_MODEL
         )
         
         # Step 3: Format response with source metadata
@@ -775,8 +735,8 @@ async def chat(
         )
         
         logger.info(
-            f"✅ RAG chat completed for user {current_user.email}: "
-            f"generated answer from {len(retrieved_chunks)} chunks"
+            f"RAG chat completed: {len(retrieved_chunks)} chunks, "
+            f"model={llm_result['model']}, user={current_user.email}"
         )
         
         return chat_response
