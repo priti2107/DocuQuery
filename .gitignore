@@ -23,3 +23,12 @@ __pycache__/
 
 # Uploads
 backend/uploads/
+
+# Test and debug scripts
+doc_js.txt
+doc_python.txt
+test_e2e_pipeline.sh
+test_scoping_e2e.py
+upload_browser_test_docs.py
+run_rag_tests.py
+validate_*.py
