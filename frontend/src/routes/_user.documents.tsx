@@ -1,12 +1,23 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { UploadCloud, FileText, X, MoreVertical, Sparkles, Zap, Trash2, AlertCircle } from "lucide-react";
+import {
+  UploadCloud,
+  FileText,
+  X,
+  MoreVertical,
+  Sparkles,
+  Zap,
+  Trash2,
+  AlertCircle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useState, useEffect, useRef } from "react";
 import { DocumentService, DocumentResponse } from "@/services/documentService";
 
-export const Route = createFileRoute("/_user/documents")({ component: Documents });
+export const Route = createFileRoute("/_user/documents")({
+  component: Documents,
+});
 
 interface UploadProgress {
   fileId: string;
@@ -18,7 +29,9 @@ interface UploadProgress {
 
 function Documents() {
   const [documents, setDocuments] = useState<DocumentResponse[]>([]);
-  const [uploadProgress, setUploadProgress] = useState<Map<string, UploadProgress>>(new Map());
+  const [uploadProgress, setUploadProgress] = useState<
+    Map<string, UploadProgress>
+  >(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -102,19 +115,22 @@ function Documents() {
 
       try {
         // Upload file with progress tracking
-        const uploadResult = await DocumentService.uploadDocument(file, (progress) => {
-          setUploadProgress((prev) => {
-            const newMap = new Map(prev);
-            const current = newMap.get(fileId) || {
-              fileId,
-              fileName: file.name,
-              progress: 0,
-              status: "uploading",
-            };
-            newMap.set(fileId, { ...current, progress });
-            return newMap;
-          });
-        });
+        const uploadResult = await DocumentService.uploadDocument(
+          file,
+          (progress) => {
+            setUploadProgress((prev) => {
+              const newMap = new Map(prev);
+              const current = newMap.get(fileId) || {
+                fileId,
+                fileName: file.name,
+                progress: 0,
+                status: "uploading",
+              };
+              newMap.set(fileId, { ...current, progress });
+              return newMap;
+            });
+          },
+        );
 
         // Update to extracting state
         setUploadProgress((prev) => {
@@ -169,7 +185,11 @@ function Documents() {
     }
   };
 
-  const pollForCompletion = async (fileId: string, documentId: string, maxAttempts = 30) => {
+  const pollForCompletion = async (
+    fileId: string,
+    documentId: string,
+    maxAttempts = 30,
+  ) => {
     // Poll for extraction/chunking to complete (up to 30 seconds)
     for (let i = 0; i < maxAttempts; i++) {
       try {
@@ -209,7 +229,9 @@ function Documents() {
       await DocumentService.deleteDocument(documentId);
       setDocuments((prev) => prev.filter((doc) => doc.id !== documentId));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete document");
+      setError(
+        err instanceof Error ? err.message : "Failed to delete document",
+      );
     }
   };
 
@@ -248,6 +270,7 @@ function Documents() {
       progress: item.progress,
       error: item.error,
       isTemp: true,
+      meta: undefined as string | undefined,
     })),
     ...documents.map((doc) => ({
       id: doc.id,
@@ -256,10 +279,12 @@ function Documents() {
       progress: 100,
       meta: `${(doc.file_size / 1024 / 1024).toFixed(1)} MB • ${new Date(doc.upload_date).toLocaleDateString()}`,
       isTemp: false,
+      error: undefined as string | undefined,
     })),
   ];
 
-  const storageUsedMB = documents.reduce((sum, doc) => sum + doc.file_size, 0) / 1024 / 1024;
+  const storageUsedMB =
+    documents.reduce((sum, doc) => sum + doc.file_size, 0) / 1024 / 1024;
   const storageQuotaMB = 2048; // 2GB
   const storagePercent = (storageUsedMB / storageQuotaMB) * 100;
 
@@ -281,7 +306,10 @@ function Documents() {
 
       <div>
         <h1 className="font-serif text-4xl font-semibold">Knowledge Base</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Upload academic papers, reports, or textbooks to begin your AI-powered analysis.</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Upload academic papers, reports, or textbooks to begin your AI-powered
+          analysis.
+        </p>
       </div>
 
       <motion.div
@@ -308,8 +336,12 @@ function Documents() {
         <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-lift">
           <UploadCloud className="h-6 w-6" />
         </div>
-        <h3 className="mt-4 font-serif text-2xl font-semibold">Drop files here or click to upload</h3>
-        <p className="mt-1 text-sm text-muted-foreground">Support for PDF, DOCX, and TXT up to 50MB</p>
+        <h3 className="mt-4 font-serif text-2xl font-semibold">
+          Drop files here or click to upload
+        </h3>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Support for PDF, DOCX, and TXT up to 50MB
+        </p>
         <Button className="mt-5 rounded-full px-6" onClick={handleBrowseClick}>
           Browse Files
         </Button>
@@ -332,7 +364,9 @@ function Documents() {
             className="mt-4 rounded-lg border border-dashed border-muted-foreground/30 p-8 text-center text-muted-foreground"
           >
             <FileText className="h-8 w-8 mx-auto opacity-50 mb-2" />
-            <p className="text-sm">No documents yet. Upload your first document to get started.</p>
+            <p className="text-sm">
+              No documents yet. Upload your first document to get started.
+            </p>
           </motion.div>
         ) : (
           <ul className="mt-4 space-y-3">
@@ -350,7 +384,9 @@ function Documents() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-3">
-                    <div className="truncate text-sm font-medium">{item.name}</div>
+                    <div className="truncate text-sm font-medium">
+                      {item.name}
+                    </div>
                     {item.status === "uploading" && (
                       <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-medium text-blue-700">
                         Uploading
@@ -378,11 +414,15 @@ function Documents() {
                     )}
                   </div>
                   {item.error ? (
-                    <div className="mt-0.5 text-xs text-red-600">{item.error}</div>
+                    <div className="mt-0.5 text-xs text-red-600">
+                      {item.error}
+                    </div>
                   ) : item.progress !== undefined ? (
                     <Progress value={item.progress} className="mt-2 h-1.5" />
                   ) : item.meta ? (
-                    <div className="mt-0.5 text-xs text-muted-foreground">{item.meta}</div>
+                    <div className="mt-0.5 text-xs text-muted-foreground">
+                      {item.meta}
+                    </div>
                   ) : null}
                 </div>
                 {item.status === "ready" && !item.isTemp ? (
@@ -427,19 +467,28 @@ function Documents() {
             <Zap className="h-5 w-5" /> Query Your Documents
           </h3>
           <p className="mt-2 text-sm text-primary-foreground/80">
-            Upload documents and use AI to extract insights, answer questions, and find relevant information instantly.
+            Upload documents and use AI to extract insights, answer questions,
+            and find relevant information instantly.
           </p>
           <Button variant="secondary" className="mt-4 rounded-full" disabled>
             Open Chat
           </Button>
         </div>
         <div className="surface-card p-6">
-          <div className="text-xs uppercase tracking-wider text-muted-foreground">Storage used</div>
+          <div className="text-xs uppercase tracking-wider text-muted-foreground">
+            Storage used
+          </div>
           <div className="mt-2 font-serif text-3xl font-semibold">
             {storageUsedMB.toFixed(0)}
-            <span className="text-base text-muted-foreground"> MB / {storageQuotaMB} MB</span>
+            <span className="text-base text-muted-foreground">
+              {" "}
+              MB / {storageQuotaMB} MB
+            </span>
           </div>
-          <Progress value={Math.min(storagePercent, 100)} className="mt-4 h-2" />
+          <Progress
+            value={Math.min(storagePercent, 100)}
+            className="mt-4 h-2"
+          />
         </div>
       </div>
     </div>

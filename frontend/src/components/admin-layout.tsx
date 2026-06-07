@@ -6,7 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 function Icon({ name, className }: { name: string; className?: string }) {
-  const C = (Icons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[name];
+  const C = (
+    Icons as unknown as Record<
+      string,
+      React.ComponentType<{ className?: string }>
+    >
+  )[name];
   return C ? <C className={className} /> : null;
 }
 
@@ -21,16 +26,26 @@ export function AdminLayout() {
               <Icons.Leaf className="h-4 w-4" />
             </div>
             <div>
-              <div className="font-serif text-lg font-semibold text-primary">DocuQuery</div>
-              <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Admin Console</div>
+              <div className="font-serif text-lg font-semibold text-primary">
+                DocuQuery
+              </div>
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                Admin Console
+              </div>
             </div>
           </Link>
-          <Button className="mb-6 w-full justify-center rounded-lg" variant="default">
+          <Button
+            className="mb-6 w-full justify-center rounded-lg"
+            variant="default"
+          >
             <Icons.Plus className="mr-1.5 h-4 w-4" /> New Report
           </Button>
           <nav className="flex flex-col gap-1">
             {adminNav.map((item) => {
-              const active = item.to === "/admin" ? pathname === "/admin" : pathname.startsWith(item.to);
+              const active =
+                item.to === "/admin"
+                  ? pathname === "/admin"
+                  : pathname.startsWith(item.to);
               return (
                 <Link
                   key={item.to}
@@ -41,11 +56,20 @@ export function AdminLayout() {
                     <motion.span
                       layoutId="admin-sidebar-active"
                       className="absolute inset-0 rounded-lg bg-primary/10 ring-1 ring-primary/15"
-                      transition={{ type: "spring", duration: 0.45, bounce: 0.2 }}
+                      transition={{
+                        type: "spring",
+                        duration: 0.45,
+                        bounce: 0.2,
+                      }}
                     />
                   )}
-                  <Icon name={item.icon} className={`relative h-4 w-4 ${active ? "text-primary" : "text-muted-foreground"}`} />
-                  <span className={`relative ${active ? "text-primary" : ""}`}>{item.label}</span>
+                  <Icon
+                    name={item.icon}
+                    className={`relative h-4 w-4 ${active ? "text-primary" : "text-muted-foreground"}`}
+                  />
+                  <span className={`relative ${active ? "text-primary" : ""}`}>
+                    {item.label}
+                  </span>
                 </Link>
               );
             })}
@@ -61,7 +85,10 @@ export function AdminLayout() {
         <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-border bg-background/80 px-6 backdrop-blur-xl">
           <div className="relative w-full max-w-md">
             <Icons.Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Global search..." className="h-9 rounded-full bg-muted/50 pl-9" />
+            <Input
+              placeholder="Global search..."
+              className="h-9 rounded-full bg-muted/50 pl-9"
+            />
           </div>
           <div className="ml-auto flex items-center gap-3">
             <button className="grid h-9 w-9 place-items-center rounded-full bg-muted text-muted-foreground hover:text-foreground">

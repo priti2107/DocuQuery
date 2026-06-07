@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Search as SearchIcon,
   FileText,
@@ -10,10 +10,7 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  DocumentService,
-  SearchResultChunk,
-} from "@/services/documentService";
+import { DocumentService, SearchResultChunk, DocumentResponse } from "@/services/documentService";
 
 export const Route = createFileRoute("/_user/search")({ component: Search });
 
@@ -24,6 +21,24 @@ function Search() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
+  const [documents, setDocuments] = useState<DocumentResponse[]>([]);
+  const [scope, setScope] = useState<"current" | "all">("current");
+  const [selectedDocId, setSelectedDocId] = useState<string>("");
+
+  useEffect(() => {
+    const fetchDocs = async () => {
+      try {
+        const response = await DocumentService.listDocuments(0, 100);
+        setDocuments(response.documents);
+        if (response.documents.length > 0) {
+          setSelectedDocId(response.documents[0].id);
+        }
+      } catch (err) {
+        console.error("Failed to load documents for scoping:", err);
+      }
+    };
+    fetchDocs();
+  }, []);
 
   const handleSearch = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -36,11 +51,12 @@ function Search() {
     setSearchedQuery(q);
 
     try {
-      const response = await DocumentService.searchDocuments(q, 10);
+      const docIdParam = scope === "current" ? (selectedDocId || undefined) : undefined;
+      const response = await DocumentService.searchDocuments(q, docIdParam, 10);
       setResults(response.matches);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Search failed. Please try again."
+        err instanceof Error ? err.message : "Search failed. Please try again.",
       );
       setResults([]);
     } finally {
@@ -59,7 +75,62 @@ function Search() {
           Search across all your uploaded documents using natural language.
           Results are ranked by semantic similarity.
         </p>
-        <form onSubmit={handleSearch} className="relative mt-5">
+
+        <div className="mt-4 flex flex-col gap-3">
+          <div className="flex items-center gap-4">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Retrieval Scope:
+            </span>
+            <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+              <input
+                type="radio"
+                name="scope"
+                value="current"
+                checked={scope === "current"}
+                onChange={() => setScope("current")}
+                className="accent-primary h-4 w-4 cursor-pointer"
+              />
+              Current Document
+            </label>
+            <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+              <input
+                type="radio"
+                name="scope"
+                value="all"
+                checked={scope === "all"}
+                onChange={() => setScope("all")}
+                className="accent-primary h-4 w-4 cursor-pointer"
+              />
+              All My Documents
+            </label>
+          </div>
+
+          {scope === "current" && (
+            <div className="flex items-center gap-2 animate-fade-in">
+              <label htmlFor="scope-select" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Select Document:
+              </label>
+              <select
+                id="scope-select"
+                value={selectedDocId}
+                onChange={(e) => setSelectedDocId(e.target.value)}
+                className="h-9 px-3 rounded-lg border border-border bg-card text-sm font-medium focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary cursor-pointer max-w-xs"
+              >
+                {documents.length === 0 ? (
+                  <option value="">No documents found</option>
+                ) : (
+                  documents.map((doc) => (
+                    <option key={doc.id} value={doc.id}>
+                      {doc.filename}
+                    </option>
+                  ))
+                )}
+              </select>
+            </div>
+          )}
+        </div>
+
+        <form onSubmit={handleSearch} className="relative mt-4">
           <SearchIcon className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             autoFocus
@@ -169,9 +240,7 @@ function Search() {
         <div className="flex items-center justify-center py-12">
           <div className="flex items-center gap-3 text-muted-foreground">
             <Loader2 className="h-5 w-5 animate-spin" />
-            <span className="text-sm">
-              Searching across your documents...
-            </span>
+            <span className="text-sm">Searching across your documents...</span>
           </div>
         </div>
       )}

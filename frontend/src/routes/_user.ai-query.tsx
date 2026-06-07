@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { Send, FileText, Zap, Loader2, AlertCircle, Info } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { DocumentService, ChatResponse } from "@/services/documentService";
+import { DocumentService, ChatResponse, DocumentResponse } from "@/services/documentService";
 
 export const Route = createFileRoute("/_user/ai-query")({ component: AIQuery });
 
@@ -21,8 +21,27 @@ function AIQuery() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [documents, setDocuments] = useState<DocumentResponse[]>([]);
+  const [scope, setScope] = useState<"current" | "all">("current");
+  const [selectedDocId, setSelectedDocId] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch documents on mount
+  useEffect(() => {
+    const fetchDocs = async () => {
+      try {
+        const response = await DocumentService.listDocuments(0, 100);
+        setDocuments(response.documents);
+        if (response.documents.length > 0) {
+          setSelectedDocId(response.documents[0].id);
+        }
+      } catch (err) {
+        console.error("Failed to load documents for scoping:", err);
+      }
+    };
+    fetchDocs();
+  }, []);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -47,14 +66,15 @@ function AIQuery() {
     setIsLoading(true);
 
     try {
-      const response = await DocumentService.chatWithDocuments(query, 5);
+      const docIdParam = scope === "current" ? (selectedDocId || undefined) : undefined;
+      const response = await DocumentService.chatWithDocuments(query, docIdParam, 10);
 
       setMessages((prev) =>
         prev.map((msg) =>
           msg.id === aiMsgId
             ? { ...msg, content: response.answer, response, loading: false }
-            : msg
-        )
+            : msg,
+        ),
       );
     } catch (err) {
       const errorMessage =
@@ -63,8 +83,8 @@ function AIQuery() {
         prev.map((msg) =>
           msg.id === aiMsgId
             ? { ...msg, content: "", error: errorMessage, loading: false }
-            : msg
-        )
+            : msg,
+        ),
       );
     } finally {
       setIsLoading(false);
@@ -104,7 +124,7 @@ function AIQuery() {
 
       {/* Chat Area */}
       <section className="surface-card relative col-span-12 flex flex-col md:col-span-8 lg:col-span-9">
-        <header className="flex items-center justify-between border-b border-border px-6 py-4">
+        <header className="flex flex-col gap-4 border-b border-border px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <div className="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 text-primary">
               <Zap className="h-4 w-4" />
@@ -112,6 +132,50 @@ function AIQuery() {
             <h3 className="font-serif text-lg font-semibold">
               Document Intelligence
             </h3>
+          </div>
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-1.5 text-xs font-medium cursor-pointer">
+                <input
+                  type="radio"
+                  name="chat-scope"
+                  value="current"
+                  checked={scope === "current"}
+                  onChange={() => setScope("current")}
+                  className="accent-primary h-3.5 w-3.5 cursor-pointer"
+                />
+                Current Document
+              </label>
+              <label className="flex items-center gap-1.5 text-xs font-medium cursor-pointer">
+                <input
+                  type="radio"
+                  name="chat-scope"
+                  value="all"
+                  checked={scope === "all"}
+                  onChange={() => setScope("all")}
+                  className="accent-primary h-3.5 w-3.5 cursor-pointer"
+                />
+                All My Documents
+              </label>
+            </div>
+            {scope === "current" && (
+              <select
+                id="chat-scope-select"
+                value={selectedDocId}
+                onChange={(e) => setSelectedDocId(e.target.value)}
+                className="h-8 min-w-[120px] max-w-[200px] rounded-lg border border-border bg-card px-2 py-0.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary cursor-pointer truncate"
+              >
+                {documents.length === 0 ? (
+                  <option value="">No documents found</option>
+                ) : (
+                  documents.map((doc) => (
+                    <option key={doc.id} value={doc.id}>
+                      {doc.filename}
+                    </option>
+                  ))
+                )}
+              </select>
+            )}
           </div>
         </header>
 

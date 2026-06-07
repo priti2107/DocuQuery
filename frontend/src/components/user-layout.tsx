@@ -18,7 +18,12 @@ import { authStore } from "@/store/authStore";
 import { toast } from "sonner";
 
 function Icon({ name, className }: { name: string; className?: string }) {
-  const C = (Icons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[name];
+  const C = (
+    Icons as unknown as Record<
+      string,
+      React.ComponentType<{ className?: string }>
+    >
+  )[name];
   return C ? <C className={className} /> : null;
 }
 
@@ -36,7 +41,7 @@ export function UserLayout() {
   };
 
   // Filter out Profile since it goes into the Avatar dropdown
-  const desktopNavItems = userNav.filter(item => item.label !== "Profile");
+  const desktopNavItems = userNav.filter((item) => item.label !== "Profile");
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -55,27 +60,41 @@ export function UserLayout() {
               <SheetContent side="left" className="w-64 p-0">
                 <div className="flex flex-col h-full">
                   <div className="p-6 border-b border-border">
-                    <Link to="/dashboard" className="flex items-center gap-2" onClick={() => setIsMobileMenuOpen(false)}>
+                    <Link
+                      to="/dashboard"
+                      className="flex items-center gap-2"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
                       <div className="grid h-8 w-8 place-items-center rounded-lg bg-primary text-primary-foreground">
                         <Icons.Sparkles className="h-4 w-4" />
                       </div>
-                      <span className="font-serif text-xl font-semibold tracking-tight text-primary">DocuQuery</span>
+                      <span className="font-serif text-xl font-semibold tracking-tight text-primary">
+                        DocuQuery
+                      </span>
                     </Link>
                   </div>
                   <div className="flex-1 overflow-auto p-4">
                     <nav className="flex flex-col gap-2">
                       {userNav.map((item) => {
-                        const active = pathname === item.to || (item.to !== "/dashboard" && pathname.startsWith(item.to));
+                        const active =
+                          pathname === item.to ||
+                          (item.to !== "/dashboard" &&
+                            pathname.startsWith(item.to));
                         return (
                           <Link
                             key={item.to}
                             to={item.to}
                             onClick={() => setIsMobileMenuOpen(false)}
                             className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                              active ? "bg-secondary text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                              active
+                                ? "bg-secondary text-primary"
+                                : "text-muted-foreground hover:bg-muted hover:text-foreground"
                             }`}
                           >
-                            <Icon name={item.icon} className={`h-4 w-4 ${active ? "text-primary" : "text-muted-foreground"}`} />
+                            <Icon
+                              name={item.icon}
+                              className={`h-4 w-4 ${active ? "text-primary" : "text-muted-foreground"}`}
+                            />
                             <span>{item.label}</span>
                           </Link>
                         );
@@ -83,7 +102,9 @@ export function UserLayout() {
                     </nav>
                   </div>
                   <div className="p-4 border-t border-border">
-                    <Button className="w-full rounded-full bg-primary text-primary-foreground">Upgrade Plan</Button>
+                    <Button className="w-full rounded-full bg-primary text-primary-foreground">
+                      Upgrade Plan
+                    </Button>
                   </div>
                 </div>
               </SheetContent>
@@ -94,12 +115,16 @@ export function UserLayout() {
             <div className="grid h-8 w-8 place-items-center rounded-lg bg-primary text-primary-foreground">
               <Icons.Sparkles className="h-4 w-4" />
             </div>
-            <span className="font-serif text-xl font-semibold tracking-tight text-primary">DocuQuery</span>
+            <span className="font-serif text-xl font-semibold tracking-tight text-primary">
+              DocuQuery
+            </span>
           </Link>
-          
+
           <nav className="hidden items-center gap-1 lg:flex flex-1">
             {desktopNavItems.map((n) => {
-              const active = pathname === n.to || (n.to !== "/dashboard" && pathname.startsWith(n.to));
+              const active =
+                pathname === n.to ||
+                (n.to !== "/dashboard" && pathname.startsWith(n.to));
               return (
                 <Link
                   key={n.to}
@@ -110,10 +135,16 @@ export function UserLayout() {
                     <motion.span
                       layoutId="topnav-pill"
                       className="absolute inset-0 rounded-md bg-secondary"
-                      transition={{ type: "spring", duration: 0.45, bounce: 0.18 }}
+                      transition={{
+                        type: "spring",
+                        duration: 0.45,
+                        bounce: 0.18,
+                      }}
                     />
                   )}
-                  <span className={`relative flex items-center gap-2 ${active ? "text-primary" : ""}`}>
+                  <span
+                    className={`relative flex items-center gap-2 ${active ? "text-primary" : ""}`}
+                  >
                     {/* Optional icon in topnav: <Icon name={n.icon} className="h-4 w-4" /> */}
                     {n.label}
                   </span>
@@ -125,10 +156,19 @@ export function UserLayout() {
           <div className="ml-auto flex items-center gap-3">
             <div className="relative hidden md:block">
               <Icons.Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Quick Search..." className="h-9 w-56 lg:w-64 rounded-full bg-muted/50 pl-9" />
+              <Input
+                placeholder="Quick Search..."
+                className="h-9 w-56 lg:w-64 rounded-full bg-muted/50 pl-9"
+              />
             </div>
-            <Button variant="default" size="sm" className="hidden sm:inline-flex rounded-full px-5">Upgrade</Button>
-            
+            <Button
+              variant="default"
+              size="sm"
+              className="hidden sm:inline-flex rounded-full px-5"
+            >
+              Upgrade
+            </Button>
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="h-9 w-9 rounded-full bg-gradient-to-br from-sage to-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background transition-all hover:opacity-90" />
@@ -137,13 +177,19 @@ export function UserLayout() {
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link to="/profile" className="flex items-center cursor-pointer">
+                  <Link
+                    to="/profile"
+                    className="flex items-center cursor-pointer"
+                  >
                     <Icons.User className="mr-2 h-4 w-4" />
                     <span>Profile</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link to="/dashboard" className="flex items-center cursor-pointer">
+                  <Link
+                    to="/dashboard"
+                    className="flex items-center cursor-pointer"
+                  >
                     <Icons.Settings className="mr-2 h-4 w-4" />
                     <span>Settings</span>
                   </Link>

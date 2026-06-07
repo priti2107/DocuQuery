@@ -1,6 +1,14 @@
 import React, { useState } from "react";
 import { Link, useRouter, useSearch } from "@tanstack/react-router";
-import { Leaf, Mail, Lock, Loader2, Eye, EyeOff, ArrowRight } from "lucide-react";
+import {
+  Leaf,
+  Mail,
+  Lock,
+  Loader2,
+  Eye,
+  EyeOff,
+  ArrowRight,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,7 +18,7 @@ import { toast } from "sonner";
 
 export function LoginPage() {
   const router = useRouter();
-  
+
   // Get search params for redirects after successful login
   const search = useSearch({ strict: false }) as { redirect?: string };
   const redirectPath = search.redirect || "/dashboard";
@@ -55,13 +63,14 @@ export function LoginPage() {
       toast.success("Successfully logged in!", {
         description: "Welcome back to DocuQuery.",
       });
-      
+
       // Navigate to destination
       await router.navigate({ to: redirectPath });
-    } catch (err: any) {
-      setError(err.message || "Invalid email or password. Please try again.");
+    } catch (err) {
+      const errorObj = err as Error;
+      setError(errorObj.message || "Invalid email or password. Please try again.");
       toast.error("Login failed", {
-        description: err.message || "Invalid credentials.",
+        description: errorObj.message || "Invalid credentials.",
       });
     } finally {
       setIsLoading(false);
@@ -123,7 +132,10 @@ export function LoginPage() {
             {/* Password input */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-foreground font-medium">
+                <Label
+                  htmlFor="password"
+                  className="text-foreground font-medium"
+                >
                   Password
                 </Label>
                 <a
@@ -131,7 +143,8 @@ export function LoginPage() {
                   onClick={(e) => {
                     e.preventDefault();
                     toast.info("Password reset", {
-                      description: "Please contact support to reset your password.",
+                      description:
+                        "Please contact support to reset your password.",
                     });
                   }}
                   className="text-xs font-semibold text-primary hover:text-primary/80 transition-colors"
@@ -179,7 +192,8 @@ export function LoginPage() {
                 </>
               ) : (
                 <>
-                  Sign In <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  Sign In{" "}
+                  <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </>
               )}
             </Button>
@@ -246,4 +260,3 @@ export function LoginPage() {
     </div>
   );
 }
-

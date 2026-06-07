@@ -14,10 +14,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  DocumentService,
-  DocumentResponse,
-} from "@/services/documentService";
+import { DocumentService, DocumentResponse } from "@/services/documentService";
 import { AuthService, UserResponse } from "@/services/authService";
 
 export const Route = createFileRoute("/_user/dashboard")({

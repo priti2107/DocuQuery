@@ -1,6 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
-import { Edit3, UploadCloud, FileText, Loader2, AlertCircle } from "lucide-react";
+import {
+  Edit3,
+  UploadCloud,
+  FileText,
+  Loader2,
+  AlertCircle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -25,9 +31,7 @@ function Profile() {
       const profile = await AuthService.getProfile();
       setUser(profile);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to load profile"
-      );
+      setError(err instanceof Error ? err.message : "Failed to load profile");
     } finally {
       setIsLoading(false);
     }
@@ -126,7 +130,9 @@ function Profile() {
 
         <div className="space-y-5">
           <div className="surface-card p-6">
-            <h2 className="font-serif text-xl font-semibold">Account Details</h2>
+            <h2 className="font-serif text-xl font-semibold">
+              Account Details
+            </h2>
             <ul className="mt-4 space-y-3 text-sm">
               <li className="flex justify-between">
                 <span className="text-muted-foreground">Plan</span>

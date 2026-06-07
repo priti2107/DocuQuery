@@ -1,6 +1,15 @@
 import React, { useState } from "react";
 import { Link, useRouter, useSearch } from "@tanstack/react-router";
-import { Leaf, User, Mail, Lock, Loader2, Eye, EyeOff, ArrowRight } from "lucide-react";
+import {
+  Leaf,
+  User,
+  Mail,
+  Lock,
+  Loader2,
+  Eye,
+  EyeOff,
+  ArrowRight,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,7 +18,7 @@ import { toast } from "sonner";
 
 export function SignupPage() {
   const router = useRouter();
-  
+
   // Get search params for redirects after successful sign up
   const search = useSearch({ strict: false }) as { redirect?: string };
 
@@ -59,20 +68,21 @@ export function SignupPage() {
     setIsLoading(true);
     try {
       await AuthService.signup(name, email, password);
-      
+
       toast.success("Account created successfully!", {
         description: "Please sign in with your credentials.",
       });
-      
+
       // Navigate to login page
       await router.navigate({
         to: "/login",
         search: { redirect: search.redirect },
       });
-    } catch (err: any) {
-      setError(err.message || "Email address already registered.");
+    } catch (err) {
+      const errorObj = err as Error;
+      setError(errorObj.message || "Email address already registered.");
       toast.error("Registration failed", {
-        description: err.message || "Please check your inputs and try again.",
+        description: errorObj.message || "Please check your inputs and try again.",
       });
     } finally {
       setIsLoading(false);
@@ -186,7 +196,10 @@ export function SignupPage() {
 
             {/* Confirm Password Input */}
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword" className="text-foreground font-medium">
+              <Label
+                htmlFor="confirmPassword"
+                className="text-foreground font-medium"
+              >
                 Confirm Password
               </Label>
               <div className="relative">
@@ -240,4 +253,3 @@ export function SignupPage() {
     </div>
   );
 }
-
