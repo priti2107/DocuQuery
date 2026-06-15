@@ -246,7 +246,14 @@ class EmbeddingService:
             for chunk_id, embedding_vector in chunk_embeddings:
                 try:
                     from bson import ObjectId
-                    
+
+                    # PHASE 1 FIX 1.4: Validate embedding dimension
+                    if len(embedding_vector) != 384:
+                        error_msg = f"Invalid embedding dimension for chunk {chunk_id}: {len(embedding_vector)} (expected 384)"
+                        errors.append(error_msg)
+                        logger.error(error_msg)
+                        continue
+
                     result = await collection.update_one(
                         {"_id": ObjectId(chunk_id)},
                         {
@@ -256,19 +263,27 @@ class EmbeddingService:
                             }
                         }
                     )
-                    
+
                     if result.modified_count > 0:
                         updates += 1
-                
+
                 except Exception as e:
                     error_msg = f"Failed to update chunk {chunk_id}: {str(e)}"
                     errors.append(error_msg)
                     logger.error(error_msg)
             
+            # PHASE 1 FIX 1.3: Validate embedding count
+            if updates != len(chunk_embeddings):
+                error_summary = f"Partial embedding failure: {updates}/{len(chunk_embeddings)} chunks updated"
+                logger.error(f"⚠️  {error_summary}")
+                if errors:
+                    error_summary = f"{error_summary} ({len(errors)} errors: {errors[0]})"
+                return (updates, error_summary)
+
             if errors:
                 error_summary = f"{len(errors)} chunks failed: {errors[0]}"
                 return (updates, error_summary)
-            
+
             return (updates, None)
         
         except Exception as e:
