@@ -17,6 +17,7 @@ Architecture:
 - On deletion: removes both file and metadata
 """
 
+import logging
 import os
 import shutil
 from datetime import datetime
@@ -29,6 +30,10 @@ from app.db.database import get_database
 from app.models.document import Document
 from app.services.extraction_service import extraction_service
 from app.services.chunking_service import chunking_service
+from app.services.embedding_service import embedding_service
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 
 # ============================================================================
@@ -313,7 +318,19 @@ class DocumentService:
                         }
                     }
                 )
-            
+
+                # PHASE 1 FIX 1.1: Auto-trigger embedding generation after chunking
+                if chunk_count > 0:
+                    try:
+                        embedded_count, embed_status = await embedding_service.process_document_embeddings(
+                            db=documents_collection.database,
+                            document_id=document.id
+                        )
+                        logger.info(f"✅ Auto-generated embeddings: {embedded_count} chunks embedded for document {document.id}")
+                    except Exception as embed_error:
+                        # Don't block upload if embedding fails
+                        logger.warning(f"⚠️ Auto-embedding failed (non-blocking): {str(embed_error)}")
+
             except Exception as e:
                 # If chunking fails, log error but don't fail the upload
                 # Document still has extracted_text available for future processing
