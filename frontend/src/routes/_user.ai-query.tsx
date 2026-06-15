@@ -53,6 +53,12 @@ function AIQuery() {
     const query = input.trim();
     if (!query || isLoading) return;
 
+    // PHASE 1 FIX 1.2: Validate document selection when scope="current"
+    if (scope === "current" && !selectedDocId) {
+      setError("Please select a document from the dropdown before asking a question");
+      return;
+    }
+
     const userMsgId = `user-${Date.now()}`;
     const aiMsgId = `ai-${Date.now()}`;
 
@@ -66,7 +72,7 @@ function AIQuery() {
     setIsLoading(true);
 
     try {
-      const docIdParam = scope === "current" ? (selectedDocId || undefined) : undefined;
+      const docIdParam = scope === "current" ? selectedDocId : undefined;
       const response = await DocumentService.chatWithDocuments(query, docIdParam, 10);
 
       setMessages((prev) =>
